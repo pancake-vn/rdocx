@@ -27,7 +27,8 @@ pkg-url = "{ repo }/releases/download/v{ version }/rdocx-{ target }.zip"
 pkg-fmt = "zip"
 
 [features]
-default = ["system-fonts"]
+default = ["system-fonts", "full-fonts"]
+full-fonts = ["rdocx/full-fonts"]
 system-fonts = ["rdocx/system-fonts"]
 
 [[bin]]

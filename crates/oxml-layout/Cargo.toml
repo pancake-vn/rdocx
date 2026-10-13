@@ -23,7 +23,8 @@ shared-version = "incubating"
 tag-name = "rpptx-v{{version}}"
 
 [features]
-default = ["system-fonts"]
+default = ["system-fonts", "full-fonts"]
+full-fonts = []
 system-fonts = ["fontdb/fs", "fontdb/fontconfig"]
 
 [dependencies]

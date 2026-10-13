@@ -1921,7 +1921,8 @@ fn compute_line_height(
     }
 }
 
-#[cfg(test)]
+// These fixtures require the complete deterministic font bundle.
+#[cfg(all(test, feature = "full-fonts"))]
 mod tests {
     use super::*;
 

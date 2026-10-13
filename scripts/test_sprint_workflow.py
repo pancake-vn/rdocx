@@ -3078,7 +3078,7 @@ class SprintWorkflowTests(unittest.TestCase):
         self.assertIn('tar -C "$stage" -czf "$archive_path" "$binary" README.md LICENSE', build)
         self.assertIn('7z a -tzip "$archive_path" "${binary}.exe" README.md LICENSE', build)
         self.assertIn("sudo apt-get install --yes musl-tools", build)
-        self.assertIn('build_args+=(--no-default-features)', build)
+        self.assertIn('build_args+=(--no-default-features --features full-fonts)', build)
         self.assertIn("if-no-files-found: error", build)
         self.assertNotIn("continue-on-error", build)
         self.assert_no_success_short_circuit(self.operative_lines(build))
@@ -3162,7 +3162,11 @@ class SprintWorkflowTests(unittest.TestCase):
                 f"{{ repo }}/releases/download/{tag}/{binary}-{{ target }}.zip",
             )
             self.assertEqual(windows["pkg-fmt"], "zip")
-            self.assertEqual(manifest["features"]["default"], ["system-fonts"])
+            self.assertEqual(manifest["features"]["default"], ["system-fonts", "full-fonts"])
+            self.assertEqual(
+                manifest["features"]["full-fonts"],
+                [f"{binary}/full-fonts"],
+            )
             self.assertEqual(
                 manifest["features"]["system-fonts"],
                 [f"{binary}/system-fonts"],

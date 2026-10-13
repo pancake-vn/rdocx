@@ -18,7 +18,8 @@ shared-version = "incubating"
 tag-name = "rpptx-v{{version}}"
 
 [features]
-default = ["default-template", "render", "system-fonts"]
+default = ["default-template", "render", "system-fonts", "full-fonts"]
+full-fonts = ["oxml-layout/full-fonts", "rpptx-render?/full-fonts"]
 agile-encryption = ["oxml-opc/agile-encryption"]
 default-template = ["dep:scraper"]
 digital-signatures = ["oxml-opc/digital-signatures"]

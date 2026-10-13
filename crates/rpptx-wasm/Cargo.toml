@@ -28,7 +28,7 @@ default = []
 render = ["rpptx/render"]
 
 [dependencies]
-rpptx = { workspace = true, default-features = false, features = ["default-template"] }
+rpptx = { workspace = true, default-features = false, features = ["default-template", "full-fonts"] }
 wasm-bindgen.workspace = true
 
 [dev-dependencies]

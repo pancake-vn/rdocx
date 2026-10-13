@@ -32,6 +32,17 @@ Most applications need only `rdocx`. Specialist crates expose the OPC,
 WordprocessingML, layout, HTML, and fixed-output layers for applications that
 already own one of those boundaries.
 
+Default builds embed the complete fallback font set. To reduce native binary
+size, disable default features and keep system font discovery:
+
+```toml
+rdocx = { version = "0.16.0", default-features = false, features = ["system-fonts"] }
+```
+
+This embeds only four Liberation Sans styles on mobile and Linux. On macOS and
+Windows it uses system or caller-supplied fonts. Keep `full-fonts` enabled for
+the complete deterministic font set. Font files remain in the source package.
+
 ## Measured footprint and speed
 
 Archive size is regenerated from tracked package contents. The performance
@@ -39,7 +50,7 @@ rows are the enforced release-mode bounds plus one dated observation.
 
 | Measurement | Value | Version | Platform | Build mode | Input | Command | Statistic | Measured on |
 |---|---|---|---|---|---|---|---|---|
-| Crates.io archive: rdocx | 3,524,430 compressed bytes, 50,763,043 member bytes, 37 members | 0.16.0 | macOS 26.6.2, Apple M5 Max, arm64 | `cargo package --locked --no-verify` | Tracked `rdocx` package inventory | `python3 scripts/readme_doctests.py --record-measurements` | gzip archive bytes, tar member bytes, tar member count | 2026-10-09 |
+| Crates.io archive: rdocx | 3,524,733 compressed bytes, 50,763,690 member bytes, 37 members | 0.16.0 | macOS 26.4.1, arm64 | `cargo package --locked --no-verify` | Tracked `rdocx` package inventory | `python3 scripts/readme_doctests.py --record-measurements` | gzip archive bytes, tar member bytes, tar member count | 2026-10-13 |
 | Large-document layout throughput | minimum 250 pages/s, observed 31,019.1 pages/s | rdocx 0.14.0 | macOS 26.6.2, Apple M5 Max, arm64 | release, one test thread | 1,000 one-page paragraphs with deterministic fonts | `cargo test -p rdocx --test regression_test --release a_thousand_page_document_paginates_and_renders_within_the_declared_limits -- --ignored --exact --nocapture --test-threads=1` | pages per wall-clock second | 2026-09-19 |
 | Large-document layout peak allocation | maximum 64 MiB, observed 29.03 MiB | rdocx 0.14.0 | macOS 26.6.2, Apple M5 Max, arm64 | release, one test thread | 1,000 one-page paragraphs with deterministic fonts | `cargo test -p rdocx --test regression_test --release a_thousand_page_document_paginates_and_renders_within_the_declared_limits -- --ignored --exact --nocapture --test-threads=1` | peak live allocation | 2026-09-19 |
 | Large-document PDF throughput | minimum 1,000 pages/s, observed 60,058.0 pages/s | rdocx 0.14.0 | macOS 26.6.2, Apple M5 Max, arm64 | release, one test thread | 1,000 deterministic layout pages | `cargo test -p rdocx --test regression_test --release a_thousand_page_document_paginates_and_renders_within_the_declared_limits -- --ignored --exact --nocapture --test-threads=1` | pages per wall-clock second | 2026-09-19 |

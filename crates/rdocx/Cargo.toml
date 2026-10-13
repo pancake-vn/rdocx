@@ -17,7 +17,8 @@ shared-version = "workspace"
 tag-name = "v{{version}}"
 
 [features]
-default = ["system-fonts"]
+default = ["system-fonts", "full-fonts"]
+full-fonts = ["oxml-layout/full-fonts", "rdocx-layout/full-fonts"]
 system-fonts = ["oxml-layout/system-fonts", "rdocx-layout/system-fonts"]
 agile-encryption = ["oxml-opc/agile-encryption"]
 digital-signatures = ["oxml-opc/digital-signatures"]

@@ -28,7 +28,8 @@ pkg-url = "{ repo }/releases/download/rpptx-v{ version }/rpptx-{ target }.zip"
 pkg-fmt = "zip"
 
 [features]
-default = ["system-fonts"]
+default = ["system-fonts", "full-fonts"]
+full-fonts = ["rpptx/full-fonts"]
 system-fonts = ["rpptx/system-fonts"]
 
 [[bin]]

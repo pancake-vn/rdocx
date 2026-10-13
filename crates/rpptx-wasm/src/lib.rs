@@ -483,10 +483,9 @@ mod tests {
         assert!(workspace_manifest.contains(
             "rpptx = { path = \"crates/rpptx\", version = \"0.14.0\", default-features = false }"
         ));
-        assert!(
-            facade_manifest
-                .contains("default = [\"default-template\", \"render\", \"system-fonts\"]")
-        );
+        assert!(facade_manifest.contains(
+            "default = [\"default-template\", \"render\", \"system-fonts\", \"full-fonts\"]"
+        ));
         for dependency in [
             "dep:gif",
             "dep:jpeg-encoder",
@@ -509,7 +508,7 @@ mod tests {
         assert!(wasm_manifest.contains("default = []"));
         assert!(wasm_manifest.contains("render = [\"rpptx/render\"]"));
         assert!(wasm_manifest.contains(
-            "rpptx = { workspace = true, default-features = false, features = [\"default-template\"] }"
+            "rpptx = { workspace = true, default-features = false, features = [\"default-template\", \"full-fonts\"] }"
         ));
         assert!(!wasm_manifest.contains("default = [\"render\"]"));
         assert!(!wasm_manifest.contains("features = [\"default-template\", \"render\"]"));
