@@ -116,7 +116,7 @@ hypher = { version = "=0.1.7", default-features = false, features = [
     "spanish",
 ] }
 icu_segmenter = { version = "=2.3.0", default-features = false, features = [
-    "auto",
+    "lstm",
     "compiled_data",
 ] }
 ttf-parser = "0.25"

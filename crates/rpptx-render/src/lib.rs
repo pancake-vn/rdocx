@@ -4118,13 +4118,12 @@ mod tests {
         let rpptx_manifest = include_str!("../../rpptx/Cargo.toml");
         let binding_manifest = include_str!("../../rpptx-py/Cargo.toml");
         assert!(manifest.contains(
-            "[features]\ndefault = [\"system-fonts\"]\nsystem-fonts = [\"oxml-layout/system-fonts\"]"
+            "[features]\ndefault = [\"system-fonts\", \"full-fonts\"]\nfull-fonts = [\"oxml-layout/full-fonts\"]\nsystem-fonts = [\"oxml-layout/system-fonts\"]"
         ));
         assert!(manifest.contains("oxml-layout = { workspace = true, default-features = false }"));
-        assert!(
-            rpptx_manifest
-                .contains("default = [\"default-template\", \"render\", \"system-fonts\"]")
-        );
+        assert!(rpptx_manifest.contains(
+            "default = [\"default-template\", \"render\", \"system-fonts\", \"full-fonts\"]"
+        ));
         assert!(rpptx_manifest.contains(
             "system-fonts = [\"oxml-layout/system-fonts\", \"rpptx-render?/system-fonts\"]"
         ));
@@ -4133,7 +4132,7 @@ mod tests {
         ));
         assert!(
             binding_manifest.contains(
-                "rpptx = { workspace = true, features = [\"default-template\", \"render\", \"system-fonts\"] }"
+                "rpptx = { workspace = true, features = [\"default-template\", \"render\", \"system-fonts\", \"full-fonts\"] }"
             )
         );
         for dependency in [

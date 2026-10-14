@@ -24,7 +24,7 @@ wasm-opt = ["-Oz", "--enable-bulk-memory", "--enable-nontrapping-float-to-int"]
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-rdocx = { workspace = true, default-features = false }
+rdocx = { workspace = true, default-features = false, features = ["full-fonts"] }
 wasm-bindgen = { workspace = true }
 
 [dev-dependencies]

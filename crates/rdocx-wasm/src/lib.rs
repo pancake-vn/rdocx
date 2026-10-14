@@ -324,20 +324,22 @@ mod tests {
             );
         }
         assert!(layout_manifest.contains(
-            "[features]\ndefault = [\"system-fonts\"]\nsystem-fonts = [\"oxml-layout/system-fonts\"]"
+            "[features]\ndefault = [\"system-fonts\", \"full-fonts\"]\nfull-fonts = [\"oxml-layout/full-fonts\"]\nsystem-fonts = [\"oxml-layout/system-fonts\"]"
         ));
         assert!(
             layout_manifest
                 .contains("oxml-layout = { workspace = true, default-features = false }")
         );
         assert!(facade_manifest.contains(
-            "[features]\ndefault = [\"system-fonts\"]\nsystem-fonts = [\"oxml-layout/system-fonts\", \"rdocx-layout/system-fonts\"]"
+            "[features]\ndefault = [\"system-fonts\", \"full-fonts\"]\nfull-fonts = [\"oxml-layout/full-fonts\", \"rdocx-layout/full-fonts\"]\nsystem-fonts = [\"oxml-layout/system-fonts\", \"rdocx-layout/system-fonts\"]"
         ));
         assert!(
             facade_manifest
                 .contains("rdocx-layout = { workspace = true, default-features = false }")
         );
-        assert!(wasm_manifest.contains("rdocx = { workspace = true, default-features = false }"));
+        assert!(wasm_manifest.contains(
+            "rdocx = { workspace = true, default-features = false, features = [\"full-fonts\"] }"
+        ));
         assert!(!wasm_manifest.contains("rdocx/system-fonts"));
     }
 }

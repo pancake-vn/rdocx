@@ -1,6 +1,8 @@
 //! Bundled fallback fonts for standalone operation.
 //!
-//! The following fonts are embedded in the binary:
+//! The default `full-fonts` feature embeds all 27 font files below.
+//! Without it, macOS and Windows use system or caller-supplied fonts.
+//! Other targets embed only the four Liberation Sans styles.
 //!
 //! - **Carlito** — metric-compatible with Calibri (Word's default font),
 //!   licensed under the SIL Open Font License 1.1
@@ -24,7 +26,8 @@
 /// Returns bundled font data: `(family_name, font_bytes)` pairs.
 ///
 /// Returns Carlito, Caladea, Liberation Sans, Liberation Serif, and Liberation
-/// Mono, each with Regular, Bold, Italic, and BoldItalic variants.
+/// Mono in four styles, plus the complex-script fallback fonts.
+#[cfg(feature = "full-fonts")]
 pub fn bundled_font_data() -> Vec<(&'static str, &'static [u8])> {
     vec![
         // Carlito — metric-compatible replacement for Calibri
@@ -143,6 +146,41 @@ pub fn bundled_font_data() -> Vec<(&'static str, &'static [u8])> {
     ]
 }
 
+/// Returns no bundled fonts on desktop targets without `full-fonts`.
+#[cfg(all(
+    not(feature = "full-fonts"),
+    any(target_os = "macos", target_os = "windows")
+))]
+pub fn bundled_font_data() -> Vec<(&'static str, &'static [u8])> {
+    Vec::new()
+}
+
+/// Returns the four Liberation Sans styles on other targets without `full-fonts`.
+#[cfg(all(
+    not(feature = "full-fonts"),
+    not(any(target_os = "macos", target_os = "windows"))
+))]
+pub fn bundled_font_data() -> Vec<(&'static str, &'static [u8])> {
+    vec![
+        (
+            "Liberation Sans",
+            include_bytes!("../fonts/LiberationSans-Regular.ttf").as_slice(),
+        ),
+        (
+            "Liberation Sans",
+            include_bytes!("../fonts/LiberationSans-Bold.ttf").as_slice(),
+        ),
+        (
+            "Liberation Sans",
+            include_bytes!("../fonts/LiberationSans-Italic.ttf").as_slice(),
+        ),
+        (
+            "Liberation Sans",
+            include_bytes!("../fonts/LiberationSans-BoldItalic.ttf").as_slice(),
+        ),
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::bundled_font_data;
@@ -174,7 +212,12 @@ mod tests {
             .map(|(family, _)| *family)
             .collect::<BTreeSet<_>>();
 
-        assert_eq!(bundled_families, licensed_families);
+        assert!(bundled_families.is_subset(&licensed_families));
+        #[cfg(feature = "full-fonts")]
+        {
+            assert_eq!(bundled_families, licensed_families);
+            assert_eq!(bundled_font_data().len(), 27);
+        }
 
         let fonts_dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("fonts");
         for (family, licence_file) in family_licences {
@@ -199,6 +242,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "full-fonts")]
     #[test]
     fn deterministic_complex_script_fonts_cover_the_approved_fixture_repertoire() {
         let fixtures = [
@@ -223,5 +267,51 @@ mod tests {
                 "{family} misses its approved fixture repertoire"
             );
         }
+    }
+
+    #[cfg(not(feature = "full-fonts"))]
+    #[test]
+    fn small_builds_embed_only_the_platform_fallback_fonts() {
+        let fonts = bundled_font_data();
+        if cfg!(any(target_os = "macos", target_os = "windows")) {
+            assert!(fonts.is_empty());
+        } else {
+            assert_eq!(fonts.len(), 4);
+            for ((family, bytes), (bold, italic)) in
+                fonts
+                    .into_iter()
+                    .zip([(false, false), (true, false), (false, true), (true, true)])
+            {
+                assert_eq!(family, "Liberation Sans");
+                let face = ttf_parser::Face::parse(bytes, 0).expect("fallback font parses");
+                assert_eq!(face.is_bold(), bold);
+                assert_eq!(face.is_italic(), italic);
+                assert!(
+                    "HỆ QUẢN TRỊ"
+                        .chars()
+                        .all(|ch| face.glyph_index(ch).is_some())
+                );
+            }
+        }
+    }
+
+    #[cfg(not(feature = "full-fonts"))]
+    #[test]
+    fn caller_fonts_render_vietnamese_without_the_full_bundle() {
+        let mut fonts = crate::FontManager::new_deterministic().expect("font database loads");
+        if cfg!(any(target_os = "macos", target_os = "windows")) {
+            assert!(fonts.resolve_font(None, false, false).is_err());
+        }
+        fonts.load_additional_fonts(&[crate::FontFile {
+            family: "Liberation Sans".to_owned(),
+            data: include_bytes!("../fonts/LiberationSans-Regular.ttf").to_vec(),
+        }]);
+        let font_id = fonts
+            .resolve_font_for_text(Some("Liberation Sans"), false, false, "HỆ QUẢN TRỊ")
+            .expect("caller font covers Vietnamese");
+        let shaped = fonts.shape_text(font_id, "HỆ QUẢN TRỊ", 12.0).unwrap();
+        assert!(shaped.width > 0.0);
+        assert!(!shaped.glyph_ids.is_empty());
+        assert!(shaped.glyph_ids.iter().all(|id| *id != 0));
     }
 }

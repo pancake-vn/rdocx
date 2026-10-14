@@ -18,7 +18,8 @@ shared-version = "incubating"
 tag-name = "rpptx-v{{version}}"
 
 [features]
-default = ["system-fonts"]
+default = ["system-fonts", "full-fonts"]
+full-fonts = ["oxml-layout/full-fonts"]
 system-fonts = ["oxml-layout/system-fonts"]
 
 [dependencies]

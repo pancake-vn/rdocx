@@ -153,8 +153,10 @@ workspace publish dry run, archive-size enforcement, and separate release
 review before publication.
 
 The `oxml-layout` `--no-default-features` path disables host system font
-discovery while retaining bundled fonts for deterministic construction. This is
-also the same font-isolation path the WASM build needs.
+discovery and the complete bundled font set. It retains four Liberation Sans
+styles outside macOS and Windows, and no bundled fonts on those two desktop
+targets. Add `--features full-fonts` for deterministic construction with all
+27 fonts and no host discovery. WASM bindings explicitly retain `full-fonts`.
 
 `oxml-layout` pins `hypher` exactly at 0.1.7 with default features disabled and
 only `alloc`, `english`, `french`, `german`, and `spanish` enabled. Its Liang
@@ -227,10 +229,15 @@ oracle only.
 | `rdocx` | `digital-signatures` | off | Forwards native signature creation and verification to `oxml-opc` |
 | `rpptx` | `digital-signatures` | off | Forwards native signature creation and current-state verification to `oxml-opc` |
 | `oxml-layout` | `system-fonts` | on | Off for wasm, where `fontconfig` will not build |
+| `oxml-layout` | `full-fonts` | on | Embeds all 27 fonts. Off selects the small platform font set |
 | `rdocx-layout` | `system-fonts` | on | Forwards host discovery to `oxml-layout` |
+| `rdocx-layout` | `full-fonts` | on | Forwards the complete font set to `oxml-layout` |
 | `rdocx` | `system-fonts` | on | Forwards through the complete native layout graph |
+| `rdocx` | `full-fonts` | on | Forwards through the complete native layout graph |
 | `rpptx-render` | `system-fonts` | on | Preserves host discovery for normal presentation rendering |
+| `rpptx-render` | `full-fonts` | on | Preserves the complete presentation fallback font set |
 | `rpptx` | `system-fonts` | on | Preserves native presentation font resolution |
+| `rpptx` | `full-fonts` | on | Forwards to shared layout and the enabled renderer |
 | `rpptx` | `default-template` | on | The bundled `default.pptx` and private bounded HTML importer |
 | `rpptx` | `render` | on | Pulls in `rpptx-render`, `oxml-pdf`, and the private bounded PDF importer |
 | `rpptx-wasm` | `render` | off | Adds `toPdf` through the deterministic facade renderer |
@@ -244,7 +251,13 @@ not. Its generated `toPdf` method calls the normal `Document::to_pdf` facade,
 which therefore uses document-embedded and bundled fonts without host font
 discovery in that graph. Native `rpptx`, `rpptx-render`, and the presentation
 Python binding retain system fonts through the same explicit forwarding
-pattern. Bundled font bytes remain available in both modes. The `rpptx`
+pattern. The CLI, Python and WASM bindings retain the complete font set.
+The client `pancake-work-client` selects small native builds through
+`rdocx` with `default-features = false, features = ["system-fonts"]`.
+All dependency paths must leave `full-fonts` off because Cargo combines
+features. Shared backend test dependencies enable the complete set only for
+their own tests. All font assets and legal files remain in the source package.
+The `rpptx`
 security features are native-only named-consumer edges to `oxml-opc`. The
 Python, WASM, and CLI manifests do not opt in to `agile-encryption` or
 `digital-signatures`, so their ordinary graphs exclude the added cryptographic
@@ -978,10 +991,15 @@ explaining why `zip` and `fontdb` are trimmed should be preserved rather than
 regenerated.
 
 `oxml-layout` is the direct consumer of exact `hypher` 0.1.7 for conditional
-hyphens, `icu_segmenter` 2.3 with compiled data for complex-script boundaries,
+hyphens, `icu_segmenter` 2.3 with compiled LSTM data for complex-script boundaries,
 and `unicode-bidi` 0.3.18 for paragraph levels and line-local visual order.
 These edges remain format-neutral and compile in the no-default-features and
 wasm32 graphs.
+
+Word segmentation uses `WordSegmenter::new_lstm`. Shared layout accepts its
+word boundaries only inside Unicode complex-context scripts. Chinese and
+Japanese use UAX 14 line opportunities, so their unused word dictionary is
+excluded from the native binary.
 
 The private native Word SVG renderer is the direct runtime consumer of
 `base64`, which embeds exact layout font bytes and page image bytes into

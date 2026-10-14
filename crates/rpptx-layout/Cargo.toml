@@ -24,4 +24,5 @@ oxml-chart.workspace = true
 rpptx-oxml.workspace = true
 
 [dev-dependencies]
+oxml-layout = { workspace = true, features = ["full-fonts"] }
 oxml-opc.workspace = true

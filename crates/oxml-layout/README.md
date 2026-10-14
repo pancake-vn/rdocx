@@ -18,7 +18,7 @@ The archive row is regenerated from the complete published package that carries 
 
 | Measurement | Value | Version | Platform | Build mode | Input | Command | Statistic | Measured on |
 |---|---|---|---|---|---|---|---|---|
-| Crates.io archive: oxml-layout | 4,634,513 compressed bytes, 9,271,100 member bytes, 51 members | 0.14.0 | macOS 26.6.2, Apple M5 Max, arm64 | `cargo package --locked --no-verify` | Tracked `oxml-layout` package inventory | `python3 scripts/readme_doctests.py --record-measurements` | gzip archive bytes, tar member bytes, tar member count | 2026-10-09 |
+| Crates.io archive: oxml-layout | 4,635,449 compressed bytes, 9,275,311 member bytes, 51 members | 0.14.0 | macOS 26.4.1, arm64 | `cargo package --locked --no-verify` | Tracked `oxml-layout` package inventory | `python3 scripts/readme_doctests.py --record-measurements` | gzip archive bytes, tar member bytes, tar member count | 2026-10-13 |
 
 ## Use it when
 
@@ -45,4 +45,14 @@ let accent = Color::from_hex("3366CC");
 assert_eq!((accent.r, accent.g, accent.b), (0.2, 0.4, 0.8));
 ```
 
-Add `oxml-layout = { version = "0.14.0", default-features = false }` to your dependencies. Enable the default `system-fonts` feature only when host font discovery is intended.
+Add `oxml-layout = { version = "0.14.0", default-features = false }` to select the small configuration.
+
+The default `full-fonts` feature embeds all 27 font files. Disabling it embeds
+only the four Liberation Sans styles outside macOS and Windows. On macOS and
+Windows, a small build uses system or caller-supplied fonts.
+
+Use `default-features = false, features = ["full-fonts"]` for deterministic
+rendering with the complete font set and no system font discovery. Use
+`default-features = false, features = ["system-fonts"]` for a small native build
+with system font discovery. Cargo combines features across dependencies, so
+every dependency path must leave `full-fonts` disabled for a small build.

@@ -25,6 +25,7 @@ oxml-sml.workspace = true
 quick-xml.workspace = true
 
 [dev-dependencies]
+oxml-layout = { workspace = true, features = ["full-fonts"] }
 oxml-opc.workspace = true
 oxml-pdf.workspace = true
 tiny-skia.workspace = true

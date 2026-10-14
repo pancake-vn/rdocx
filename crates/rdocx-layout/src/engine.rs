@@ -9872,10 +9872,10 @@ fn layout_paragraph_with_source_and_table(
     let grid_line_pitch_pt =
         grid_line_pitch_pt.filter(|_| effective_ppr.line_rule.as_deref() != Some("exact"));
 
-    let uses_multilingual_layout = base_direction != TextDirection::Auto
+    let uses_multilingual_layout = base_direction == TextDirection::RightToLeft
         || multilingual_styles
             .values()
-            .any(|style| style.direction != TextDirection::Auto)
+            .any(|style| style.direction == TextDirection::RightToLeft)
         || inline_items.iter().any(|item| {
             multilingual_candidate(item)
                 .is_some_and(|segment| needs_word_multilingual_layout(&segment.text))
@@ -15541,6 +15541,77 @@ mod tests {
     }
 
     #[test]
+    fn explicit_left_to_right_text_uses_the_plain_layout_path() {
+        let text = "HỆ QUẢN TRỊ";
+        let baseline = deterministic_layout(&make_input_with_text(text));
+        assert!(multilingual_runs(&baseline).is_empty());
+        assert_eq!(output_text(&baseline).concat(), text);
+
+        for bidi in [None, Some(false)] {
+            for rtl in [None, Some(false)] {
+                let mut input = make_input_with_text(text);
+                let BodyContent::Paragraph(paragraph) = &mut input.document.body.content[0] else {
+                    panic!("expected paragraph")
+                };
+                paragraph.properties = Some(CT_PPr {
+                    bidi,
+                    ..Default::default()
+                });
+                paragraph.runs[0].properties = Some(CT_RPr {
+                    rtl,
+                    ..Default::default()
+                });
+
+                let output = deterministic_layout(&input);
+                assert!(
+                    multilingual_runs(&output).is_empty(),
+                    "explicit LTR alone must not select rich layout: bidi={bidi:?}, rtl={rtl:?}"
+                );
+                assert_layout_results_equal(&output, &baseline);
+            }
+        }
+    }
+
+    #[test]
+    fn right_to_left_and_complex_text_still_use_multilingual_layout() {
+        for (bidi, rtl, text) in [
+            (Some(true), Some(false), "ABC 123"),
+            (None, Some(true), "123"),
+            (Some(false), Some(false), "漢字 ABC"),
+        ] {
+            let mut input = make_input_with_text(text);
+            let BodyContent::Paragraph(paragraph) = &mut input.document.body.content[0] else {
+                panic!("expected paragraph")
+            };
+            paragraph.properties = Some(CT_PPr {
+                bidi,
+                ..Default::default()
+            });
+            paragraph.runs[0].properties = Some(CT_RPr {
+                rtl,
+                ..Default::default()
+            });
+
+            let output = deterministic_layout(&input);
+            let runs = multilingual_runs(&output);
+            assert!(!runs.is_empty(), "rich layout required for {text:?}");
+            assert_eq!(
+                runs.iter()
+                    .map(|run| run.logical_text.as_str())
+                    .collect::<String>(),
+                text
+            );
+            if rtl == Some(false) {
+                let latin = runs
+                    .iter()
+                    .find(|run| run.logical_text == "ABC")
+                    .expect("Latin run remains shaped");
+                assert_eq!(latin.direction, TextDirection::LeftToRight);
+            }
+        }
+    }
+
+    #[test]
     fn word_positioned_runs_keep_logical_order_with_visual_origins() {
         let mut input = make_input_with_text("");
         let BodyContent::Paragraph(paragraph) = &mut input.document.body.content[0] else {
@@ -15582,13 +15653,9 @@ mod tests {
             .unwrap()
             .origin
             .x;
-        let latin_x = runs
-            .iter()
-            .find(|run| run.logical_text == "ABC")
-            .unwrap()
-            .origin
-            .x;
-        assert!(latin_x < arabic_x, "visual origins remain RTL");
+        let latin = runs.iter().find(|run| run.logical_text == "ABC").unwrap();
+        assert_eq!(latin.direction, TextDirection::LeftToRight);
+        assert!(latin.origin.x < arabic_x, "visual origins remain RTL");
     }
 
     #[test]

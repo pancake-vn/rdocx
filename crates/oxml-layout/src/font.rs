@@ -1847,7 +1847,7 @@ impl FontManager {
         }
     }
 
-    #[cfg(test)]
+    #[cfg(all(test, feature = "full-fonts"))]
     fn shaping_memo_counts(&self) -> (usize, usize, usize, usize) {
         let memo = self
             .shaping_memo
@@ -1914,8 +1914,8 @@ fn harfrust_script(script: TextScript) -> harfrust::Script {
     }
 }
 
-/// UAX 14 line break opportunities, plus dictionary word boundaries inside
-/// Thai, Lao, Khmer and Myanmar text, which UAX 14 leaves to a dictionary.
+/// UAX 14 line break opportunities, plus LSTM word boundaries inside
+/// Thai, Lao, Khmer and Myanmar text, which need complex-context segmentation.
 ///
 /// A word boundary elsewhere is not a line break opportunity: it falls before
 /// a comma, a space or the hyphen of a compound.
@@ -1926,7 +1926,7 @@ fn multilingual_break_opportunities(text: &str) -> HashSet<usize> {
                 == unicode_linebreak::BreakClass::ComplexContext
         })
     };
-    let mut opportunities = icu_segmenter::WordSegmenter::new_auto(Default::default())
+    let mut opportunities = icu_segmenter::WordSegmenter::new_lstm(Default::default())
         .segment_str(text)
         .filter(|offset| {
             *offset > 0
@@ -2140,7 +2140,8 @@ fn map_font_name(name: &str) -> &[&str] {
     }
 }
 
-#[cfg(test)]
+// These fixtures require the complete deterministic font bundle.
+#[cfg(all(test, feature = "full-fonts"))]
 mod tests {
     use super::*;
     use crate::Color;

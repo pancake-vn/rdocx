@@ -17,7 +17,8 @@ shared-version = "workspace"
 tag-name = "v{{version}}"
 
 [features]
-default = ["system-fonts"]
+default = ["system-fonts", "full-fonts"]
+full-fonts = ["oxml-layout/full-fonts"]
 system-fonts = ["oxml-layout/system-fonts"]
 
 [dependencies]

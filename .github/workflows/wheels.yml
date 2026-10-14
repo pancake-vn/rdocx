@@ -281,7 +281,7 @@ jobs:
         run: |
           build_args=()
           if [[ "${{ matrix.platform.target }}" == "x86_64-unknown-linux-musl" ]]; then
-            build_args+=(--no-default-features)
+            build_args+=(--no-default-features --features full-fonts)
           fi
           cargo build --release --locked \
             --package "${{ steps.selected.outputs.package }}" \

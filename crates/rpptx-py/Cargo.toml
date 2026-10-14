@@ -29,5 +29,5 @@ extension-module = ["pyo3/extension-module"]
 [dependencies]
 oxml-py-support = { workspace = true }
 pyo3 = { workspace = true }
-rpptx = { workspace = true, features = ["default-template", "render", "system-fonts"] }
+rpptx = { workspace = true, features = ["default-template", "render", "system-fonts", "full-fonts"] }
 smallvec = { workspace = true }
