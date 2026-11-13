@@ -1215,7 +1215,7 @@ fn vml_fraction(value: &str) -> Option<f64> {
 }
 
 fn image_adjustment_opacity(gain: f64, black_level: f64) -> f64 {
-    let opacity = 0.5 + 0.5 * gain - black_level;
+    let opacity = gain * (1.0 - 2.0 * black_level);
     if opacity.is_finite() {
         opacity.clamp(0.0, 1.0)
     } else {
