@@ -1008,6 +1008,8 @@ struct PendingWatermark {
     text: Option<String>,
     font_family: Option<String>,
     relationship_id: Option<String>,
+    gain: Option<f64>,
+    black_level: Option<f64>,
 }
 
 impl PendingWatermark {
@@ -1039,7 +1041,11 @@ impl PendingWatermark {
                 width_pt,
                 height_pt,
                 rotation_degrees: self.rotation,
-                opacity,
+                opacity: opacity
+                    * image_adjustment_opacity(
+                        self.gain.unwrap_or(1.0),
+                        self.black_level.unwrap_or(0.0),
+                    ),
             }),
             _ => None,
         }
@@ -1083,7 +1089,7 @@ fn parse_vml_watermarks(xml: &[u8]) -> Vec<VmlWatermark> {
                     && local == b"fill"
                 {
                     shape.opacity = unqualified_attribute(&reader, element, b"opacity")
-                        .and_then(|value| value.parse().ok())
+                        .and_then(|value| vml_fraction(&value))
                         .unwrap_or(shape.opacity);
                 } else if let Some(shape) = pending.as_mut()
                     && namespace_is(&namespace, VML_NS)
@@ -1099,6 +1105,10 @@ fn parse_vml_watermarks(xml: &[u8]) -> Vec<VmlWatermark> {
                 {
                     shape.relationship_id =
                         namespaced_attribute(&reader, element, RELATIONSHIPS_NS, b"id");
+                    shape.gain = unqualified_attribute(&reader, element, b"gain")
+                        .and_then(|value| vml_fraction(&value));
+                    shape.black_level = unqualified_attribute(&reader, element, b"blacklevel")
+                        .and_then(|value| vml_fraction(&value));
                 }
             }
             Event::End(ref element)
@@ -1190,6 +1200,27 @@ fn style_value(style: &str, expected: &str) -> Option<String> {
             .eq_ignore_ascii_case(expected)
             .then(|| value.trim().to_owned())
     })
+}
+
+fn vml_fraction(value: &str) -> Option<f64> {
+    let value = value.trim();
+    match value.strip_suffix('f') {
+        Some(fixed) => fixed
+            .trim()
+            .parse::<f64>()
+            .ok()
+            .map(|fixed| fixed / 65536.0),
+        None => value.parse().ok(),
+    }
+}
+
+fn image_adjustment_opacity(gain: f64, black_level: f64) -> f64 {
+    let opacity = 0.5 + 0.5 * gain - black_level;
+    if opacity.is_finite() {
+        opacity.clamp(0.0, 1.0)
+    } else {
+        1.0
+    }
 }
 
 fn style_number(style: &str, name: &str, suffix: &str) -> Option<f64> {
