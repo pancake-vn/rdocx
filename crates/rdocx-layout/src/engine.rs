@@ -8780,40 +8780,59 @@ fn layout_paragraph_with_source_and_table(
                 }
             }
             // Shape the marker text
-            let marker_rpr = marker.marker_rpr;
-            let marker_font_size = marker_rpr.sz.map(|hp| hp.to_pt()).unwrap_or_else(|| {
-                style_resolver::resolve_run_properties(
-                    para_style_id,
-                    None,
-                    styles,
-                    table_run_properties,
-                )
-                .sz
-                .map(|hp| hp.to_pt())
-                .unwrap_or(11.0)
-            });
+            // Word formats the marker like the paragraph mark: the paragraph
+            // style's run properties, then the paragraph mark's own, then the
+            // list level's on top. Reading the level alone drew every level
+            // that names no font in the engine default, at the style's size.
+            let mut marker_rpr = style_resolver::resolve_run_properties(
+                para_style_id,
+                None,
+                styles,
+                table_run_properties,
+            );
+            if let Some(paragraph_mark_rpr) = direct_ppr.and_then(|ppr| ppr.rpr.as_ref()) {
+                marker_rpr.merge_from(paragraph_mark_rpr);
+            }
+            let paragraph_font_family =
+                resolve_font_family(&marker_rpr, input.theme.as_ref(), WordFontSlot::Ascii);
+            let level_rpr = &marker.marker_rpr;
+            if level_rpr.font_ascii.is_some() || level_rpr.font_ascii_theme.is_some() {
+                marker_rpr.font_ascii = None;
+                marker_rpr.font_ascii_theme = None;
+            }
+            marker_rpr.merge_from(level_rpr);
+            let marker_font_size = marker_rpr.sz.map(|hp| hp.to_pt()).unwrap_or(11.0);
             let marker_bold = marker_rpr.bold.unwrap_or(false);
             let marker_italic = marker_rpr.italic.unwrap_or(false);
-            let marker_font_family = marker_rpr.font_ascii.as_deref();
+            let level_font_family =
+                resolve_font_family(&marker_rpr, input.theme.as_ref(), WordFontSlot::Ascii);
+
+            // Word's Symbol and Wingdings bullets are code points in the
+            // F020 to F0FF private-use block, which only fonts with a
+            // Windows symbol cmap can draw. Their Unicode equivalents are
+            // drawn in the paragraph's font, falling back by coverage.
+            let (marker_text, marker_font_family) = match unicode_for_symbol_font_text(
+                level_font_family.as_deref(),
+                &marker.marker_text,
+            ) {
+                Some(text) => (text, paragraph_font_family),
+                None => (marker.marker_text, level_font_family),
+            };
 
             // Bullet glyphs are not in every font either, so the marker gets
             // the same coverage check as body text.
             if let Ok(font_id) = fm.resolve_font_for_text(
-                marker_font_family,
+                marker_font_family.as_deref(),
                 marker_bold,
                 marker_italic,
-                &marker.marker_text,
-            ) && let Ok(shaped) = fm.shape_text(font_id, &marker.marker_text, marker_font_size)
+                &marker_text,
+            ) && let Ok(shaped) = fm.shape_text(font_id, &marker_text, marker_font_size)
             {
                 let metrics = fm.metrics(font_id, marker_font_size)?;
-                let color = marker_rpr
-                    .color
-                    .as_ref()
-                    .map(|c| Color::from_hex(c))
-                    .unwrap_or(Color::BLACK);
+                let color = resolve_run_color(&marker_rpr, input.theme.as_ref());
 
                 inline_items.push(InlineItem::Marker(TextSegment {
-                    text: marker.marker_text,
+                    text: marker_text,
                     direction: TextDirection::Auto,
                     source: None,
                     font_id,
@@ -12929,6 +12948,78 @@ fn resolve_run_color(
         .filter(|c| c.as_str() != "auto")
         .map(|c| Color::from_hex(c))
         .unwrap_or(Color::BLACK)
+}
+
+/// The Unicode text for `text` written in a legacy symbol font, or None when
+/// the font is not one or any character has no mapping.
+///
+/// Word stores characters of Symbol and Wingdings as their font code plus
+/// 0xF000. Only a font with a Windows symbol cmap draws those code points,
+/// which the Unicode-encoded Symbol on macOS and the bundled fonts lack.
+fn unicode_for_symbol_font_text(family: Option<&str>, text: &str) -> Option<String> {
+    let table: fn(u8) -> Option<char> = match family?.to_ascii_lowercase().as_str() {
+        "symbol" => symbol_font_char,
+        "wingdings" => wingdings_font_char,
+        _ => return None,
+    };
+    if !text
+        .chars()
+        .any(|ch| matches!(u32::from(ch), 0xF020..=0xF0FF))
+    {
+        return None;
+    }
+    text.chars()
+        .map(|ch| match u32::from(ch) {
+            code @ 0xF020..=0xF0FF => table((code - 0xF000) as u8),
+            _ => Some(ch),
+        })
+        .collect()
+}
+
+/// Adobe's Symbol encoding, without the bracket and brace pieces.
+fn symbol_font_char(code: u8) -> Option<char> {
+    const GREEK_UPPER: &str = "ΑΒΧΔΕΦΓΗΙϑΚΛΜΝΟΠΘΡΣΤΥςΩΞΨΖ";
+    const GREEK_LOWER: &str = "αβχδεφγηιϕκλμνοπθρστυϖωξψζ";
+    const HIGH: &str = "€ϒ′≤⁄∞ƒ♣♦♥♠↔←↑→↓°±″≥×∝∂•÷≠≡≈…⏐⎯↵ℵℑℜ℘⊗⊕∅∩∪⊃⊇⊄⊂⊆∈∉∠∇®©™∏√⋅¬∧∨⇔⇐⇑⇒⇓◊〈®©™∑";
+    match code {
+        0x22 => Some('∀'),
+        0x24 => Some('∃'),
+        0x27 => Some('∋'),
+        0x2A => Some('∗'),
+        0x2D => Some('−'),
+        0x40 => Some('≅'),
+        0x41..=0x5A => GREEK_UPPER.chars().nth(usize::from(code - 0x41)),
+        0x5C => Some('∴'),
+        0x5E => Some('⊥'),
+        0x60 => Some('‾'),
+        0x61..=0x7A => GREEK_LOWER.chars().nth(usize::from(code - 0x61)),
+        0x7E => Some('∼'),
+        0x20..=0x7D => Some(char::from(code)),
+        0xA0..=0xE5 => HIGH.chars().nth(usize::from(code - 0xA0)),
+        0xF1 => Some('〉'),
+        0xF2 => Some('∫'),
+        _ => None,
+    }
+}
+
+/// The Wingdings characters Word offers as list bullets.
+fn wingdings_font_char(code: u8) -> Option<char> {
+    match code {
+        0x6C => Some('●'),
+        0x6E => Some('■'),
+        0x6F => Some('□'),
+        0x71 => Some('❑'),
+        0x75 => Some('◆'),
+        0x76 => Some('❖'),
+        0xA1 => Some('○'),
+        0xA7 => Some('▪'),
+        0xA8 => Some('◻'),
+        0xD8 => Some('➢'),
+        0xFB => Some('✘'),
+        0xFC => Some('✔'),
+        0xFE => Some('☑'),
+        _ => None,
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
